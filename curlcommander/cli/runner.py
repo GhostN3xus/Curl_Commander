@@ -27,6 +27,8 @@ def run_cli(args) -> None:
             _replay(repo, args.id)
         case "curl":
             _show_curl_from_history(repo, args.id)
+        case "export-history":
+            _export_history(repo, args.output)
         case "clear-history":
             repo.clear()
             _console.print("[green]History cleared.[/green]")
@@ -83,6 +85,11 @@ def _show_curl_from_history(repo: HistoryRepo, id: int) -> None:
         return
 
     _print_curl(entry.curl_cmd)
+
+
+def _export_history(repo: HistoryRepo, output: str) -> None:
+    repo.export_json(output)
+    _console.print(f"[green]History exported to[/green] [bold]{output}[/bold]")
 
 
 # ---------------------------------------------------------------------------

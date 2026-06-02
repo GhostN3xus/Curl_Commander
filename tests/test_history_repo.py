@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from curlcommander.core.request_model import HistoryEntry, RequestConfig
@@ -101,3 +103,16 @@ def test_null_status_preserved(repo):
     id_ = repo.save(entry)
     fetched = repo.get_by_id(id_)
     assert fetched.status_code is None
+
+
+def test_export_json_creates_file(repo, tmp_path):
+    repo.save(_make_entry(url="https://example.com"))
+    output_path = tmp_path / "history.json"
+    repo.export_json(output_path)
+
+    assert output_path.exists()
+    data = json.loads(output_path.read_text(encoding="utf-8"))
+    assert isinstance(data, list)
+    assert len(data) == 1
+    assert data[0]["request"]["url"] == "https://example.com"
+    assert data[0]["status_code"] == 200

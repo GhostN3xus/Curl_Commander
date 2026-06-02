@@ -1,5 +1,6 @@
 import json
 import sqlite3
+from dataclasses import asdict
 from pathlib import Path
 
 from curlcommander.config import DB_PATH, HISTORY_LIMIT
@@ -58,6 +59,13 @@ class HistoryRepo:
     def clear(self) -> None:
         self._conn.execute("DELETE FROM history")
         self._conn.commit()
+
+    def export_json(self, output_path: str | Path) -> None:
+        rows = self._conn.execute("SELECT * FROM history ORDER BY id DESC").fetchall()
+        entries = [asdict(self._row_to_entry(row)) for row in rows]
+        output = Path(output_path)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(json.dumps(entries, indent=2), encoding="utf-8")
 
     def _row_to_entry(self, row: sqlite3.Row) -> HistoryEntry:
         request = RequestConfig(

@@ -68,6 +68,7 @@ Prompts for method, URL, headers, params, body, auth, and options step by step.
 curlcmd history             # list last 30 requests
 curlcmd replay 5            # replay history entry #5
 curlcmd curl 5              # print curl command for entry #5
+curlcmd export-history -o history.json  # export history to JSON file
 curlcmd clear-history       # delete all history
 ```
 

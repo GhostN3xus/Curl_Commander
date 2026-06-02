@@ -43,9 +43,12 @@ def build_subcommand_parser() -> argparse.ArgumentParser:
     curl_p = subparsers.add_parser("curl", help="Print curl command for a history entry")
     curl_p.add_argument("id", type=int, help="History entry ID")
 
+    export_p = subparsers.add_parser("export-history", help="Export history to JSON")
+    export_p.add_argument("-o", "--output", default="history.json", metavar="PATH", help="Output JSON file path")
+
     subparsers.add_parser("clear-history", help="Clear all history")
 
     return parser
 
 
-SUBCOMMANDS: frozenset[str] = frozenset({"history", "replay", "curl", "clear-history"})
+SUBCOMMANDS: frozenset[str] = frozenset({"history", "replay", "curl", "export-history", "clear-history"})
