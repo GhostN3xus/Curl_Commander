@@ -1,3 +1,4 @@
+import asyncio
 import time
 
 import httpx
@@ -22,45 +23,59 @@ async def send(config: RequestConfig) -> ResponseResult:
         elif resolved.body_type == "form" and "Content-Type" not in resolved.headers:
             resolved.headers["Content-Type"] = "application/x-www-form-urlencoded"
 
+    if resolved.compressed and "Accept-Encoding" not in resolved.headers:
+        resolved.headers["Accept-Encoding"] = "gzip, deflate, br"
+
     start = time.perf_counter()
 
-    try:
-        async with httpx.AsyncClient(
-            verify=resolved.verify_ssl,
-            follow_redirects=resolved.follow_redirects,
-            timeout=resolved.timeout,
-        ) as client:
-            response = await client.request(
-                method=resolved.method,
-                url=resolved.url,
-                headers=resolved.headers,
-                params=resolved.params,
-                content=content,
-                auth=auth,
+    proxy = None
+    if resolved.proxy:
+        proxy = resolved.proxy
+
+    attempt = 0
+    while True:
+        try:
+            async with httpx.AsyncClient(
+                verify=resolved.verify_ssl,
+                follow_redirects=resolved.follow_redirects,
+                timeout=resolved.timeout,
+                http2=resolved.http2,
+                proxy=proxy,
+            ) as client:
+                response = await client.request(
+                    method=resolved.method,
+                    url=resolved.url,
+                    headers=resolved.headers,
+                    params=resolved.params,
+                    content=content,
+                    auth=auth,
+                )
+
+            elapsed_ms = (time.perf_counter() - start) * 1000
+            return ResponseResult(
+                status_code=response.status_code,
+                reason=response.reason_phrase,
+                headers=dict(response.headers),
+                body=response.text,
+                content_type=response.headers.get("content-type", ""),
+                duration_ms=elapsed_ms,
+                size_bytes=len(response.content),
+                error=None,
             )
-
-        elapsed_ms = (time.perf_counter() - start) * 1000
-
-        return ResponseResult(
-            status_code=response.status_code,
-            reason=response.reason_phrase,
-            headers=dict(response.headers),
-            body=response.text,
-            content_type=response.headers.get("content-type", ""),
-            duration_ms=elapsed_ms,
-            size_bytes=len(response.content),
-            error=None,
-        )
-
-    except httpx.RequestError as exc:
-        elapsed_ms = (time.perf_counter() - start) * 1000
-        return ResponseResult(
-            status_code=None,
-            reason="",
-            headers={},
-            body="",
-            content_type="",
-            duration_ms=elapsed_ms,
-            size_bytes=0,
-            error=str(exc),
-        )
+        except httpx.RequestError as exc:
+            attempt += 1
+            if attempt > resolved.max_retries:
+                elapsed_ms = (time.perf_counter() - start) * 1000
+                return ResponseResult(
+                    status_code=None,
+                    reason="",
+                    headers={},
+                    body="",
+                    content_type="",
+                    duration_ms=elapsed_ms,
+                    size_bytes=0,
+                    error=str(exc),
+                )
+            if resolved.retry_delay > 0:
+                await asyncio.sleep(resolved.retry_delay)
+            continue

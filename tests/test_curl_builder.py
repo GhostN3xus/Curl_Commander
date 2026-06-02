@@ -135,6 +135,40 @@ def test_url_is_last():
     assert _parts(cmd)[-1] == "https://example.com"
 
 
+def test_http2_and_compressed_flags():
+    config = RequestConfig(
+        method="GET",
+        url="https://example.com",
+        compressed=True,
+        http2=True,
+    )
+    cmd = build_curl(config)
+    parts = _parts(cmd)
+    assert "--compressed" in parts
+    assert "--http2" in parts
+
+
+def test_proxy_and_retry_flags():
+    config = RequestConfig(
+        method="GET",
+        url="https://example.com",
+        proxy="http://proxy.local:8080",
+        max_retries=3,
+        retry_delay=2,
+        output_path="out.txt",
+    )
+    cmd = build_curl(config)
+    parts = _parts(cmd)
+    assert "-x" in parts
+    assert "http://proxy.local:8080" in parts
+    assert "--retry" in parts
+    assert "3" in parts
+    assert "--retry-delay" in parts
+    assert "2" in parts
+    assert "-o" in parts
+    assert "out.txt" in parts
+
+
 def test_full_example():
     config = RequestConfig(
         method="POST",

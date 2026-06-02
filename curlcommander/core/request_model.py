@@ -11,6 +11,14 @@ class RequestConfig:
     body_type: str = "none"   # "json" | "form" | "raw" | "none"
     auth_type: str = "none"   # "none" | "bearer" | "basic" | "apikey"
     auth_value: str = ""      # token | user:pass | "Header: Value"
+    proxy: str = ""
+    max_retries: int = 0
+    retry_delay: float = 0.0
+    compressed: bool = False
+    http2: bool = False
+    output_path: str = ""
+    pretty: bool = False
+    env_file: str = ""
     follow_redirects: bool = True
     verify_ssl: bool = True
     timeout: float = 30.0

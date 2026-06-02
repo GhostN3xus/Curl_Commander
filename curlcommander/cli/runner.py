@@ -1,4 +1,5 @@
 import asyncio
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -29,6 +30,8 @@ def run_cli(args) -> None:
             _show_curl_from_history(repo, args.id)
         case "export-history":
             _export_history(repo, args.output)
+        case "delete-history":
+            _delete_history(repo, args.id)
         case "clear-history":
             repo.clear()
             _console.print("[green]History cleared.[/green]")
@@ -140,8 +143,14 @@ def _execute_request(config: RequestConfig, repo: HistoryRepo) -> None:
     _console.print(header_table)
 
     if result.body:
-        formatted = format_body(result.body, result.content_type)
-        _console.print(Syntax(formatted, get_lexer(result.content_type), theme="monokai", word_wrap=True))
+        body_text = result.body
+        if config.pretty or (config.pretty is False and "json" in result.content_type.lower()):
+            body_text = format_body(result.body, result.content_type)
+        _console.print(Syntax(body_text, get_lexer(result.content_type), theme="monokai", word_wrap=True))
+
+        if config.output_path:
+            Path(config.output_path).write_text(body_text, encoding="utf-8")
+            _console.print(f"[green]Response body saved to[/green] [bold]{config.output_path}[/bold]")
 
     _persist(config, result.status_code, result.duration_ms, curl_cmd, repo)
 
@@ -183,15 +192,29 @@ def _build_config(args) -> RequestConfig:
     elif args.auth_apikey:
         auth_type, auth_value = "apikey", args.auth_apikey
 
+    env_vars = _load_env_file(args.env_file) if args.env_file else {}
+    url = _substitute_variables(args.url or "", env_vars)
+    headers = {k: _substitute_variables(v, env_vars) for k, v in headers.items()}
+    params = {k: _substitute_variables(v, env_vars) for k, v in params.items()}
+    body = _substitute_variables(body, env_vars)
+
     return RequestConfig(
         method=args.method.upper(),
-        url=args.url,
+        url=url,
         headers=headers,
         params=params,
         body=body,
         body_type=body_type,
         auth_type=auth_type,
         auth_value=auth_value,
+        proxy=args.proxy or "",
+        max_retries=args.retry,
+        retry_delay=args.retry_delay,
+        compressed=args.compressed,
+        http2=args.http2,
+        output_path=args.output or "",
+        pretty=args.pretty,
+        env_file=args.env_file or "",
         follow_redirects=not args.no_redirect,
         verify_ssl=not args.no_verify,
         timeout=args.timeout,
@@ -218,6 +241,44 @@ def _persist(
 
 def _print_curl(curl_cmd: str) -> None:
     _console.print(Syntax(curl_cmd, "bash", theme="monokai", word_wrap=True))
+
+
+def _delete_history(repo: HistoryRepo, id: int) -> None:
+    entry = repo.get_by_id(id)
+    if entry is None:
+        _console.print(f"[red]No history entry with ID {id}.[/red]")
+        return
+    repo.delete_by_id(id)
+    _console.print(f"[green]Deleted history entry {id}.[/green]")
+
+
+def _load_env_file(path: str) -> dict[str, str]:
+    vars: dict[str, str] = {}
+    try:
+        text = Path(path).read_text(encoding="utf-8")
+    except FileNotFoundError:
+        _console.print(f"[red]Env file not found:[/red] {path}")
+        return vars
+
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if "=" in stripped:
+            key, value = stripped.split("=", 1)
+            vars[key.strip()] = value.strip().strip('"').strip("'")
+    return vars
+
+
+def _substitute_variables(text: str, env_vars: dict[str, str]) -> str:
+    if not env_vars:
+        return text
+
+    def replace(match: re.Match[str]) -> str:
+        name = match.group(1)
+        return env_vars.get(name, match.group(0))
+
+    return re.sub(r"\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}", replace, text)
 
 
 def _status_style(status_code: int | None) -> str:

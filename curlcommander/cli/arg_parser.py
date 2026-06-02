@@ -18,6 +18,14 @@ def build_request_parser() -> argparse.ArgumentParser:
     parser.add_argument("--auth-bearer", metavar="TOKEN", help="Bearer token")
     parser.add_argument("--auth-basic", metavar="USER:PASS", help="Basic auth credentials")
     parser.add_argument("--auth-apikey", metavar="'Header: Value'", help="API key auth")
+    parser.add_argument("--proxy", metavar="URL", help="Proxy URL to route the request through")
+    parser.add_argument("--retry", type=int, default=0, metavar="N", help="Number of retry attempts on network error")
+    parser.add_argument("--retry-delay", type=float, default=0.0, metavar="SECONDS", help="Delay between retries")
+    parser.add_argument("--compressed", action="store_true", help="Request compressed response")
+    parser.add_argument("--http2", action="store_true", help="Use HTTP/2 if supported")
+    parser.add_argument("--output", metavar="PATH", default="", help="Save response body to file")
+    parser.add_argument("--pretty", action="store_true", help="Pretty-print response body when possible")
+    parser.add_argument("--env-file", metavar="PATH", help="Load environment variables from a file for substitutions")
     parser.add_argument("--no-redirect", action="store_true", help="Do not follow redirects")
     parser.add_argument("--no-verify", action="store_true", help="Disable SSL certificate verification")
     parser.add_argument("--timeout", type=float, default=30.0, metavar="SECONDS", help="Request timeout (default: 30)")
@@ -46,9 +54,12 @@ def build_subcommand_parser() -> argparse.ArgumentParser:
     export_p = subparsers.add_parser("export-history", help="Export history to JSON")
     export_p.add_argument("-o", "--output", default="history.json", metavar="PATH", help="Output JSON file path")
 
+    delete_p = subparsers.add_parser("delete-history", help="Delete a history entry by ID")
+    delete_p.add_argument("id", type=int, help="History entry ID")
+
     subparsers.add_parser("clear-history", help="Clear all history")
 
     return parser
 
 
-SUBCOMMANDS: frozenset[str] = frozenset({"history", "replay", "curl", "export-history", "clear-history"})
+SUBCOMMANDS: frozenset[str] = frozenset({"history", "replay", "curl", "export-history", "delete-history", "clear-history"})

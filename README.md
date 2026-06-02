@@ -50,6 +50,15 @@ curlcmd -X POST --json '{"id":1}' --curl-only https://api.example.com/users
 # With query params
 curlcmd -p "page=1" -p "limit=20" https://api.example.com/items
 
+# Proxy, retry, HTTP/2, compression
+curlcmd --proxy http://localhost:8080 --retry 3 --retry-delay 2 --http2 --compressed https://httpbin.org/get
+
+# Save response body to a file
+curlcmd --output response.txt https://httpbin.org/get
+
+# Load environment variables from .env and use {{API_URL}} substitution
+curlcmd --env-file .env -H "Authorization: Bearer {{API_TOKEN}}" {{API_URL}}
+
 # Disable SSL verification + no redirect
 curlcmd --no-verify --no-redirect https://self-signed.example.com/
 ```
@@ -68,6 +77,7 @@ Prompts for method, URL, headers, params, body, auth, and options step by step.
 curlcmd history             # list last 30 requests
 curlcmd replay 5            # replay history entry #5
 curlcmd curl 5              # print curl command for entry #5
+curlcmd delete-history 5    # delete history entry #5
 curlcmd export-history -o history.json  # export history to JSON file
 curlcmd clear-history       # delete all history
 ```
@@ -86,6 +96,14 @@ curlcmd clear-history       # delete all history
 | `--auth-bearer TOKEN` | Bearer token |
 | `--auth-basic USER:PASS` | Basic auth |
 | `--auth-apikey 'H: V'` | API key in custom header |
+| `--proxy URL` | Proxy URL for the request |
+| `--retry N` | Retry on network errors up to N times |
+| `--retry-delay SECS` | Delay between retry attempts |
+| `--compressed` | Request compressed response |
+| `--http2` | Use HTTP/2 if supported |
+| `--output PATH` | Save response body to a file |
+| `--pretty` | Pretty-print response body when possible |
+| `--env-file PATH` | Load variables from a file for substitutions |
 | `--no-redirect` | Don't follow redirects |
 | `--no-verify` | Disable SSL verification |
 | `--timeout SECS` | Timeout in seconds (default: 30) |

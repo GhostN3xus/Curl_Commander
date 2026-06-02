@@ -15,6 +15,20 @@ def build_curl(config: RequestConfig) -> str:
 
     parts: list[str] = ["curl", "-L", "-s", "-i"]
 
+    if resolved.http2:
+        parts.append("--http2")
+
+    if resolved.compressed:
+        parts.append("--compressed")
+
+    if resolved.proxy:
+        parts += ["-x", resolved.proxy]
+
+    if resolved.max_retries > 0:
+        parts += ["--retry", str(resolved.max_retries)]
+        if resolved.retry_delay > 0:
+            parts += ["--retry-delay", str(resolved.retry_delay)]
+
     if not resolved.verify_ssl:
         parts.append("-k")
 
@@ -31,6 +45,9 @@ def build_curl(config: RequestConfig) -> str:
 
     if resolved.body:
         parts += ["--data-raw", resolved.body]
+
+    if resolved.output_path:
+        parts += ["-o", resolved.output_path]
 
     url = resolved.url
     if resolved.params:
